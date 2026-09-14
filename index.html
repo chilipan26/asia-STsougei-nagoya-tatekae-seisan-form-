@@ -53,15 +53,20 @@ display: block; font-size: 13px; font-weight: 600;
 color: var(--ink-sub); margin-bottom: 6px;
 }
 .name-card label .req { color: var(--ng); margin-left: 3px; }
-input#staffName {
+.name-row {
+display: grid;
+grid-template-columns: 1fr 1fr;
+gap: 10px;
+}
+input#lastName, input#firstName {
 width: 100%; padding: 13px 11px;
 border: 1.5px solid var(--line);
 border-radius: 10px; font-size: 16px; font-family: inherit;
 color: var(--ink); background: var(--surface);
 outline: none; transition: border-color .15s;
 }
-input#staffName:focus { border-color: var(--amber); }
-input#staffName.has-error { border-color: var(--ng) !important; }
+input#lastName:focus, input#firstName:focus { border-color: var(--amber); }
+input#lastName.has-error, input#firstName.has-error { border-color: var(--ng) !important; }
 .field-error { font-size: 12px; color: var(--ng); margin-top: 5px; display: none; }
 .field-error.visible { display: block; }
 
@@ -288,8 +293,15 @@ justify-content: center; margin-bottom: 28px;
 <main>
 <div class="name-card">
 <label>お名前<span class="req">*</span></label>
-<input type="text" id="staffName" placeholder="例）山田 太郎">
-<div class="field-error" id="errName">お名前を入力してください</div>
+<div class="name-row">
+<div>
+<input type="text" id="lastName" placeholder="姓　例）山田">
+</div>
+<div>
+<input type="text" id="firstName" placeholder="名　例）太郎">
+</div>
+</div>
+<div class="field-error" id="errName">姓・名を入力してください</div>
 </div>
 
 <div id="globalError" class="global-error">入力に不備があります。確認してください。</div>
@@ -462,14 +474,19 @@ function submitForm() {
 let ok = true;
 document.getElementById('globalError').classList.remove('visible');
 
-const nameEl = document.getElementById('staffName');
-const staffName = nameEl.value.trim();
-if (!staffName) {
-nameEl.classList.add('has-error');
+const lastNameEl = document.getElementById('lastName');
+const firstNameEl = document.getElementById('firstName');
+const lastName = lastNameEl.value.trim();
+const firstName = firstNameEl.value.trim();
+const staffName = (lastName + ' ' + firstName).trim();
+if (!lastName || !firstName) {
+lastNameEl.classList.toggle('has-error', !lastName);
+firstNameEl.classList.toggle('has-error', !firstName);
 document.getElementById('errName').classList.add('visible');
 ok = false;
 } else {
-nameEl.classList.remove('has-error');
+lastNameEl.classList.remove('has-error');
+firstNameEl.classList.remove('has-error');
 document.getElementById('errName').classList.remove('visible');
 }
 
