@@ -1,604 +1,204 @@
-<!DOCTYPE html>
-<html lang="ja">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>立替金精算</title>
-<style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-:root {
---ink:      #1a1a2e;
---ink-sub:  #5a5a7a;
---surface:  #ffffff;
---bg:       #F5F5F3;
---line:     #e2e2ec;
---gray-hdr: #AEADA8;
---amber:    #E8A020;
---amber-lt: #FDF5E6;
---amber-brd:#F0D090;
---amber-txt:#7A5010;
---ok:       #2ec4b6;
---ng:       #e63946;
---radius:   14px;
-}
-html, body {
-background: var(--bg);
-color: var(--ink);
-font-family: 'Hiragino Sans', 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif;
-font-size: 16px;
-min-height: 100vh;
--webkit-tap-highlight-color: transparent;
-}
-.header {
-background: var(--gray-hdr);
-color: #fff;
-padding: 22px 20px 20px;
-position: sticky;
-top: 0;
-z-index: 10;
-}
-.header-label { font-size: 12px; letter-spacing: .12em; opacity: .85; text-transform: uppercase; margin-bottom: 4px; }
-.header-title { font-size: 22px; font-weight: 700; letter-spacing: .03em; }
-main { padding: 16px 16px 64px; max-width: 520px; margin: 0 auto; }
+/**
+ * 立替金精算システム – 納品用バックエンド (GAS)
+ * ============================================================
+ * 【使い方】
+ * 1. このスクリプトを対象スプレッドシートのコンテナスクリプトとして開く
+ *    （またはスタンドアロンにして下記 SPREADSHEET_ID を設定）
+ * 2. CONFIG.SPREADSHEET_ID を対象スプレッドシートのIDに変更
+ * 3. setupSpreadsheet() を実行 → シート構成・数式・チェックボックスを自動生成
+ * 4. 「デプロイ」→「新しいデプロイ」→ ウェブアプリ として公開
+ *    （実行ユーザー：自分／アクセスできるユーザー：全員）
+ * 5. 発行されたURLを、フォーム側HTMLの GAS_URL に設定
+ * ============================================================
+ */
 
-.name-card {
-background: var(--surface);
-border: 1.5px solid var(--line);
-border-radius: var(--radius);
-padding: 15px 14px;
-margin-bottom: 16px;
-}
-.name-card label {
-display: block; font-size: 13px; font-weight: 600;
-color: var(--ink-sub); margin-bottom: 6px;
-}
-.name-card label .req { color: var(--ng); margin-left: 3px; }
-.name-row {
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 10px;
-}
-input#lastName, input#firstName {
-width: 100%; padding: 13px 11px;
-border: 1.5px solid var(--line);
-border-radius: 10px; font-size: 16px; font-family: inherit;
-color: var(--ink); background: var(--surface);
-outline: none; transition: border-color .15s;
-}
-input#lastName:focus, input#firstName:focus { border-color: var(--amber); }
-input#lastName.has-error, input#firstName.has-error { border-color: var(--ng) !important; }
-.field-error { font-size: 12px; color: var(--ng); margin-top: 5px; display: none; }
-.field-error.visible { display: block; }
-
-.item-card {
-background: var(--surface);
-border: 1.5px solid var(--amber-brd);
-border-radius: var(--radius);
-padding: 15px 14px;
-margin-bottom: 12px;
-}
-.item-header {
-display: flex; align-items: center; justify-content: space-between;
-margin-bottom: 12px;
-}
-.item-label {
-font-size: 11px; font-weight: 700; letter-spacing: .12em;
-text-transform: uppercase; color: var(--amber);
-}
-.remove-card-btn {
-font-size: 12px; font-weight: 700;
-color: var(--ng); background: #fff0f1;
-border: 1.5px solid #f5c4c4; border-radius: 6px;
-padding: 4px 10px; cursor: pointer;
-}
-
-.field { margin-bottom: 12px; }
-.field:last-child { margin-bottom: 0; }
-label {
-display: block; font-size: 13px; font-weight: 600;
-color: var(--ink-sub); margin-bottom: 6px;
-}
-label .req { color: var(--ng); margin-left: 3px; }
-input[type="date"] {
-width: 100%; padding: 13px 11px;
-border: 1.5px solid var(--line);
-border-radius: 10px; font-size: 16px; font-family: inherit;
-color: var(--ink); background: var(--surface);
-appearance: none; -webkit-appearance: none;
-transition: border-color .15s; outline: none;
-}
-input[type="date"]:focus { border-color: var(--amber); }
-input.has-error { border-color: var(--ng) !important; }
-.field select.vehicle-select {
-width: 100%; padding: 13px 11px;
-border: 1.5px solid var(--line);
-border-radius: 10px; font-size: 16px; font-family: inherit;
-color: var(--ink); background: var(--surface);
-appearance: none; -webkit-appearance: none;
-transition: border-color .15s; outline: none;
-}
-.field select.vehicle-select:focus { border-color: var(--amber); }
-.field select.vehicle-select.has-error { border-color: var(--ng) !important; }
-
-.row-header {
-display: grid;
-grid-template-columns: 1fr 1fr 28px;
-gap: 8px;
-margin-bottom: 4px;
-}
-.cell-label { font-size: 12px; font-weight: 600; color: var(--ink-sub); }
-
-.rows-container { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
-.row-pair {
-display: grid;
-grid-template-columns: 1fr 1fr 28px;
-gap: 8px;
-align-items: center;
-}
-select.row-select {
-width: 100%; padding: 11px 8px;
-border: 1.5px solid var(--line);
-border-radius: 8px; font-size: 13px; font-family: inherit;
-color: var(--ink); background: var(--surface);
-appearance: none; -webkit-appearance: none;
-outline: none; transition: border-color .15s;
-height: 44px;
-}
-select.row-select:focus { border-color: var(--amber); }
-select.row-select.has-error { border-color: var(--ng) !important; }
-input.row-amount {
-width: 100%; padding: 11px 8px;
-border: 1.5px solid var(--line);
-border-radius: 8px; font-size: 13px; font-weight: 600; font-family: inherit;
-color: var(--ink); background: var(--surface);
-outline: none; transition: border-color .15s;
--moz-appearance: textfield;
-height: 44px;
-}
-input.row-amount::-webkit-outer-spin-button,
-input.row-amount::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-input.row-amount:focus { border-color: var(--amber); }
-input.row-amount.has-error { border-color: var(--ng) !important; }
-
-.route-wrap {
-display: none;
-grid-column: 2 / 3;
-margin-top: 6px;
-}
-.route-wrap.visible { display: block; }
-.route-label { font-size: 12px; font-weight: 600; color: var(--ink-sub); margin-bottom: 4px; }
-input.route-input {
-width: 100%; padding: 10px 11px;
-border: 1.5px solid var(--line);
-border-radius: 8px; font-size: 13px; font-family: inherit;
-color: var(--ink); background: var(--surface);
-outline: none; transition: border-color .15s;
-}
-input.route-input:focus { border-color: var(--amber); }
-
-.remove-row-btn {
-width: 28px; height: 28px;
-background: #fff0f1; border: 1.5px solid #f5c4c4;
-border-radius: 6px; color: var(--ng);
-font-size: 14px; font-weight: 700;
-cursor: pointer; display: flex; align-items: center; justify-content: center;
-flex-shrink: 0;
-}
-
-.upload-area {
-border: 2px dashed var(--amber-brd);
-border-radius: 10px;
-padding: 18px;
-text-align: center;
-cursor: pointer;
-background: var(--amber-lt);
-transition: background .15s;
-position: relative;
-margin-bottom: 12px;
-}
-.upload-area:active { background: #f5e8cc; }
-.upload-area input[type="file"] {
-position: absolute; inset: 0; opacity: 0;
-width: 100%; height: 100%; cursor: pointer;
-border: none; padding: 0;
-}
-.upload-label { font-size: 13px; font-weight: 600; color: var(--amber-txt); pointer-events: none; }
-.preview-img {
-width: 100%; max-height: 200px;
-object-fit: contain;
-border-radius: 8px;
-margin-top: 10px;
-border: 1px solid var(--amber-brd);
-display: none;
-}
-
-.add-row-btn {
-width: 100%; padding: 10px;
-background: var(--surface);
-border: 1.5px dashed var(--amber-brd);
-border-radius: 8px; font-size: 13px; font-weight: 700;
-color: var(--amber-txt); cursor: pointer;
-transition: background .15s;
-margin-bottom: 0;
-}
-.add-row-btn:active { background: var(--amber-lt); }
-
-.add-card-btn {
-width: 100%;
-padding: 15px;
-background: var(--surface);
-border: 2px dashed var(--amber);
-border-radius: var(--radius);
-font-size: 15px; font-weight: 700;
-color: var(--amber);
-cursor: pointer;
-margin-bottom: 14px;
-transition: background .15s;
-}
-.add-card-btn:active { background: var(--amber-lt); }
-
-.submit-btn {
-width: 100%; padding: 17px;
-border: none; border-radius: var(--radius);
-font-size: 17px; font-weight: 700; font-family: inherit;
-letter-spacing: .04em; cursor: pointer;
-background: var(--amber); color: #fff;
-transition: opacity .15s;
-}
-.submit-btn:disabled { opacity: .55; cursor: not-allowed; }
-
-.global-error {
-display: none; background: #fff0f1;
-border: 1.5px solid var(--ng);
-border-radius: 10px; padding: 11px 13px;
-font-size: 13px; color: var(--ng); font-weight: 600;
-margin-bottom: 12px;
-}
-.global-error.visible { display: block; }
-
-#successScreen {
-display: none; flex-direction: column;
-align-items: center; justify-content: center;
-min-height: 70vh; text-align: center; padding: 32px 24px;
-}
-#successScreen.visible { display: flex; }
-.success-icon {
-width: 88px; height: 88px; background: var(--ok);
-border-radius: 50%; display: flex; align-items: center;
-justify-content: center; margin-bottom: 28px;
-}
-.success-icon svg { width: 44px; height: 44px; }
-.success-title { font-size: 24px; font-weight: 700; margin-bottom: 12px; }
-.success-sub { font-size: 15px; color: var(--ink-sub); line-height: 1.8; }
-</style>
-</head>
-<body>
-
-<div id="successScreen">
-<div class="success-icon">
-<svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-<polyline points="20 6 9 17 4 12"/>
-</svg>
-</div>
-<div class="success-title">送信完了しました</div>
-<div class="success-sub">立替金精算の申請が<br>完了しました。<br>ありがとうございます！</div>
-</div>
-
-<div id="formWrap">
-<header class="header">
-<div class="header-label">Expense Reimbursement</div>
-<div class="header-title">立替金精算</div>
-</header>
-
-<main>
-<div class="name-card">
-<label>お名前<span class="req">*</span></label>
-<div class="name-row">
-<div>
-<input type="text" id="lastName" placeholder="姓　例）山田">
-</div>
-<div>
-<input type="text" id="firstName" placeholder="名　例）太郎">
-</div>
-</div>
-<div class="field-error" id="errName">姓・名を入力してください</div>
-</div>
-
-<div id="globalError" class="global-error">入力に不備があります。確認してください。</div>
-
-<div id="itemsContainer"></div>
-
-<button class="add-card-btn" id="addCardBtn" type="button" onclick="addCard()">＋ 別日を入力する</button>
-<button class="submit-btn" id="submitBtn" type="button" onclick="submitForm()">送信する</button>
-</main>
-</div>
-
-<script>
-// ★デプロイ後に発行されるGAS Web App のURLに書き換えてください
-const GAS_URL = 'https://script.google.com/macros/s/AKfycbyVQHHO37skfECGiT7pREmhQo2zTcZvLZavrmotMLxJpfptyIL178XhgAY4qZwVCik/exec';
-
-let cardCount = 0;
-
-const purposes = ['駐車場代','ガソリン代','ETC代','備品代','ホテル代','新幹線代','電車代','その他'];
-const opts = purposes.map(p => `<option value="${p}">${p}</option>`).join('');
-
-const vehicles = [
-'ハイエース①','ハイエース②','ハイエース③','ハイエース④','ハイエース⑥','ハイエース⑦','ハイエース⑧','ハイエース⑨','ハイエース⑩',
-'プロボックス②','プロボックス③','グラキャン①','グラキャン②',
-];
-const vehicleOpts = vehicles.map(v => `<option value="${v}">${v}</option>`).join('');
-
-function addCard() {
-cardCount++;
-const n = cardCount;
-const html = `
-<div class="item-card" id="card_${n}">
-<div class="item-header">
-<div class="item-label">ITEM ${String(n).padStart(2,'0')}</div>
-${n > 1 ? `<button class="remove-card-btn" type="button" onclick="removeCard(${n})">✕ 削除</button>` : ''}
-</div>
-
-<div class="upload-area">
-<input type="file" accept="image/*" onchange="handleImage(this,${n})">
-<div class="upload-label" id="uploadLabel_${n}">📎 領収書画像を選択する</div>
-<img class="preview-img" id="preview_${n}">
-<input type="hidden" id="fileData_${n}">
-</div>
-
-<div class="field">
-<label>ハイエース番号<span class="req">*</span></label>
-<select class="vehicle-select" id="vehicle_${n}">
-<option value="" disabled selected>選択</option>
-${vehicleOpts}
-</select>
-<div class="field-error" id="errVehicle_${n}">車両番号を選択してください</div>
-</div>
-
-<div class="field">
-<label>勤務日<span class="req">*</span></label>
-<input type="date" id="date_${n}">
-<div class="field-error" id="errDate_${n}">勤務日を選択してください</div>
-</div>
-
-<div class="row-header">
-<div class="cell-label">用途<span class="req" style="color:var(--ng);margin-left:3px;">*</span></div>
-<div class="cell-label">金額（円）<span class="req" style="color:var(--ng);margin-left:3px;">*</span></div>
-<div></div>
-</div>
-
-<div class="rows-container" id="rows_${n}"></div>
-<div class="field-error" id="errRows_${n}" style="margin-bottom:8px;">少なくとも1行入力してください</div>
-
-<button class="add-row-btn" type="button" onclick="addRow(${n})">＋ 行を追加する</button>
-</div>
-`;
-document.getElementById('itemsContainer').insertAdjacentHTML('beforeend', html);
-addRow(n);
-}
-
-function addRow(cardId) {
-const container = document.getElementById('rows_' + cardId);
-const rowId = Date.now() + '_' + Math.random().toString(36).slice(2);
-const html = `
-<div class="row-pair" id="row_${rowId}" style="display:grid;grid-template-columns:1fr 1fr 28px;gap:8px;align-items:start;">
-<div style="display:flex;flex-direction:column;gap:6px;">
-<select class="row-select" id="purpose_${rowId}" onchange="onPurposeChange('${rowId}')">
-<option value="" disabled selected>選択</option>
-${opts}
-</select>
-<div class="route-wrap" id="routeLabelWrap_${rowId}">
-<div class="route-label" style="padding:10px 8px;font-size:12px;text-align:right;">区間を入力ください</div>
-</div>
-</div>
-<div style="display:flex;flex-direction:column;gap:6px;">
-<input type="text" inputmode="numeric" class="row-amount" id="amount_${rowId}" placeholder="0">
-<div class="route-wrap" id="routeWrap_${rowId}">
-<input type="text" class="route-input" id="route_${rowId}" placeholder="例）新大阪駅〜東京駅">
-</div>
-</div>
-<button class="remove-row-btn" type="button" onclick="removeRow('${rowId}', ${cardId})" style="margin-top:8px;">✕</button>
-</div>
-`;
-container.insertAdjacentHTML('beforeend', html);
-updateFirstRowBtn(cardId);
-}
-
-function onPurposeChange(rowId) {
-const val = document.getElementById('purpose_' + rowId).value;
-const labelWrap = document.getElementById('routeLabelWrap_' + rowId);
-const inputWrap = document.getElementById('routeWrap_' + rowId);
-if (val === '新幹線代' || val === '電車代') {
-if (labelWrap) labelWrap.classList.add('visible');
-if (inputWrap) inputWrap.classList.add('visible');
-} else {
-if (labelWrap) labelWrap.classList.remove('visible');
-if (inputWrap) inputWrap.classList.remove('visible');
-const routeEl = document.getElementById('route_' + rowId);
-if (routeEl) routeEl.value = '';
-}
-}
-
-function removeRow(rowId, cardId) {
-const el = document.getElementById('row_' + rowId);
-if (el) el.remove();
-updateFirstRowBtn(cardId);
-}
-
-function updateFirstRowBtn(cardId) {
-const container = document.getElementById('rows_' + cardId);
-const rows = container.querySelectorAll('.row-pair');
-rows.forEach((row, i) => {
-const btn = row.querySelector('.remove-row-btn');
-if (btn) btn.style.visibility = (i === 0 && rows.length === 1) ? 'hidden' : 'visible';
-});
-}
-
-function removeCard(n) {
-const el = document.getElementById('card_' + n);
-if (el) el.remove();
-}
-
-async function handleImage(input, n) {
-if (!input.files.length) return;
-const file = input.files[0];
-document.getElementById('uploadLabel_' + n).textContent = '📎 ' + file.name;
-const b64 = await compressImage(file);
-document.getElementById('fileData_' + n).value = b64;
-const preview = document.getElementById('preview_' + n);
-preview.src = 'data:image/jpeg;base64,' + b64;
-preview.style.display = 'block';
-}
-
-function compressImage(file, maxDim = 800) {
-return new Promise((resolve, reject) => {
-const reader = new FileReader();
-reader.readAsDataURL(file);
-reader.onload = e => {
-const img = new Image();
-img.src = e.target.result;
-img.onload = () => {
-const canvas = document.createElement('canvas');
-let w = img.width, h = img.height;
-if (w > h) { if (w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; } }
-else        { if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; } }
-canvas.width = w; canvas.height = h;
-canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-resolve(canvas.toDataURL('image/jpeg', 0.7).split(',')[1]);
-};
-};
-reader.onerror = reject;
-});
-}
-
-function submitForm() {
-let ok = true;
-document.getElementById('globalError').classList.remove('visible');
-
-const lastNameEl = document.getElementById('lastName');
-const firstNameEl = document.getElementById('firstName');
-const lastName = lastNameEl.value.trim();
-const firstName = firstNameEl.value.trim();
-const staffName = (lastName + ' ' + firstName).trim();
-if (!lastName || !firstName) {
-lastNameEl.classList.toggle('has-error', !lastName);
-firstNameEl.classList.toggle('has-error', !firstName);
-document.getElementById('errName').classList.add('visible');
-ok = false;
-} else {
-lastNameEl.classList.remove('has-error');
-firstNameEl.classList.remove('has-error');
-document.getElementById('errName').classList.remove('visible');
-}
-
-const cards = document.querySelectorAll('.item-card');
-if (!cards.length) {
-document.getElementById('globalError').classList.add('visible');
-return;
-}
-
-const items = [];
-
-cards.forEach(card => {
-const id = card.id.replace('card_', '');
-
-const vehicleEl = document.getElementById('vehicle_' + id);
-if (!vehicleEl.value) {
-vehicleEl.classList.add('has-error');
-document.getElementById('errVehicle_' + id).classList.add('visible');
-ok = false;
-} else {
-vehicleEl.classList.remove('has-error');
-document.getElementById('errVehicle_' + id).classList.remove('visible');
-}
-
-const dateEl = document.getElementById('date_' + id);
-if (!dateEl.value) {
-dateEl.classList.add('has-error');
-document.getElementById('errDate_' + id).classList.add('visible');
-ok = false;
-} else {
-dateEl.classList.remove('has-error');
-document.getElementById('errDate_' + id).classList.remove('visible');
-}
-
-const container = document.getElementById('rows_' + id);
-const rows = container.querySelectorAll('.row-pair');
-let hasValidRow = false;
-
-rows.forEach(row => {
-const rowId = row.id.replace('row_', '');
-const purposeEl = document.getElementById('purpose_' + rowId);
-const amountEl  = document.getElementById('amount_'  + rowId);
-const pVal = purposeEl ? purposeEl.value : '';
-const aVal = amountEl  ? amountEl.value.trim() : '';
-
-if (!pVal && !aVal) return;
-
-if (pVal && aVal && Number(aVal) > 0) {
-hasValidRow = true;
-const routeEl = document.getElementById('route_' + rowId);
-items.push({
-vehicle:  vehicleEl.value,
-date:     dateEl.value,
-purpose:  pVal,
-amount:   aVal,
-route:    routeEl ? routeEl.value.trim() : '',
-fileData: document.getElementById('fileData_' + id).value || null,
-mimeType: 'image/jpeg',
-});
-} else {
-ok = false;
-if (purposeEl) purposeEl.classList.add('has-error');
-if (amountEl)  amountEl.classList.add('has-error');
-}
-});
-
-if (!hasValidRow) {
-document.getElementById('errRows_' + id).classList.add('visible');
-ok = false;
-} else {
-document.getElementById('errRows_' + id).classList.remove('visible');
-}
-});
-
-if (!ok) {
-document.getElementById('globalError').classList.add('visible');
-window.scrollTo({ top: 0, behavior: 'smooth' });
-return;
-}
-
-const payload = {
-action:    'submitReimbursement',
-staffName: staffName,
-timestamp: new Date().toISOString(),
-items:     items,
+const CONFIG = {
+  SPREADSHEET_ID: '★ここにスプレッドシートIDを入力してください',
+  SHEET_LOG: '申請ログ',
+  SHEET_PAYMENT: '支払いログ',
+  SHEET_SUMMARY: '人別サマリー',
+  // 領収書画像の保存先フォルダ（「大きな箱」）。
+  // 指定したGoogleドライブフォルダのIDを入れると、そこに画像がまとめて入ります。
+  // 空欄のままにすると、スクリプトが自動でフォルダを1つ作って使い回します。
+  DRIVE_FOLDER_ID: '1JiolNR5v2dhdQa_WfWCBC-ns6n7O3Bf5',
+  DRIVE_FOLDER_PROP_KEY: 'RECEIPT_FOLDER_ID',
+  CHECKBOX_PRESET_ROWS: 1000, // 事前にチェックボックス書式・入力規則を適用しておく行数
 };
 
-const btn = document.getElementById('submitBtn');
-btn.disabled = true;
-btn.textContent = '送信中…';
+// ============================================================
+// 受信エンドポイント（フォームからのPOSTを受け取る）
+// ============================================================
+function doPost(e) {
+  try {
+    const payload = JSON.parse(e.postData.contents);
 
-fetch(GAS_URL, {
-method: 'POST',
-headers: { 'Content-Type': 'text/plain' },
-body: JSON.stringify(payload),
-})
-.then(r => r.json())
-.then(data => {
-if (data.status === 'ok') {
-document.getElementById('formWrap').style.display = 'none';
-document.getElementById('successScreen').classList.add('visible');
-} else { throw new Error(data.message || 'error'); }
-})
-.catch(err => {
-console.error(err);
-btn.disabled = false;
-btn.textContent = '送信する';
-alert('送信に失敗しました。再度お試しください。');
-});
+    if (payload.action !== 'submitReimbursement') {
+      return jsonResponse({ status: 'error', message: 'invalid action' });
+    }
+
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const logSheet = ss.getSheetByName(CONFIG.SHEET_LOG);
+    if (!logSheet) {
+      throw new Error('シート「' + CONFIG.SHEET_LOG + '」が見つかりません。先に setupSpreadsheet() を実行してください。');
+    }
+
+    const staffName = String(payload.staffName || '').trim();
+    const timestamp = payload.timestamp ? new Date(payload.timestamp) : new Date();
+    const items = payload.items || [];
+
+    if (!staffName) return jsonResponse({ status: 'error', message: '氏名が未入力です' });
+    if (!items.length) return jsonResponse({ status: 'error', message: '申請項目がありません' });
+
+    const folder = getReceiptFolder();
+    const uploadedImages = {}; // 同じ画像（同一カード内の複数行）は1回だけアップロードして使い回す
+
+    items.forEach(function (item) {
+      let imageUrl = '';
+      if (item.fileData) {
+        if (uploadedImages[item.fileData]) {
+          imageUrl = uploadedImages[item.fileData];
+        } else {
+          imageUrl = saveReceiptImage(
+            folder, item.fileData, item.mimeType || 'image/jpeg',
+            staffName, item.date, item.vehicle
+          );
+          uploadedImages[item.fileData] = imageUrl;
+        }
+      }
+
+      const row = logSheet.getLastRow() + 1;
+      logSheet.getRange(row, 1, 1, 8).setValues([[
+        timestamp,
+        staffName,
+        item.vehicle || '',
+        item.date || '',
+        item.purpose || '',
+        item.route || '',
+        Number(item.amount) || 0,
+        imageUrl,
+      ]]);
+      // I列（レシート受領チェック）は setupSpreadsheet() で事前に
+      // チェックボックス書式を適用済みのため、値は未設定＝未チェックのまま
+    });
+
+    return jsonResponse({ status: 'ok' });
+  } catch (err) {
+    return jsonResponse({ status: 'error', message: String(err) });
+  }
 }
 
-addCard();
-</script>
-</body>
-</html>
+function jsonResponse(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// ============================================================
+// 領収書画像をDriveに保存してURLを返す
+// ファイル名は「日付 車両番号 氏名.jpg」（同名が既にあれば _2, _3... を付与）
+// ============================================================
+function saveReceiptImage(folder, base64Data, mimeType, staffName, dateStr, vehicle) {
+  const baseName = [dateStr || '', vehicle || '', staffName || '']
+    .filter(function (s) { return s; })
+    .join(' ');
+  const ext = mimeType === 'application/pdf' ? 'pdf' : 'jpg';
+  let fileName = baseName + '.' + ext;
+  let counter = 2;
+  while (folder.getFilesByName(fileName).hasNext()) {
+    fileName = baseName + '_' + counter + '.' + ext;
+    counter++;
+  }
+
+  const blob = Utilities.newBlob(Utilities.base64Decode(base64Data), mimeType, fileName);
+  const file = folder.createFile(blob);
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  return file.getUrl();
+}
+
+// 保存先フォルダ（「大きな箱」）を取得。
+// CONFIG.DRIVE_FOLDER_ID が設定されていればそのフォルダを使用し、
+// 未設定ならスクリプトプロパティに記憶した自動作成フォルダを使い回す。
+function getReceiptFolder() {
+  if (CONFIG.DRIVE_FOLDER_ID && CONFIG.DRIVE_FOLDER_ID.indexOf('★') !== 0) {
+    return DriveApp.getFolderById(CONFIG.DRIVE_FOLDER_ID);
+  }
+  return getOrCreateReceiptFolder();
+}
+
+function getOrCreateReceiptFolder() {
+  const props = PropertiesService.getScriptProperties();
+  const existingId = props.getProperty(CONFIG.DRIVE_FOLDER_PROP_KEY);
+  if (existingId) {
+    try {
+      return DriveApp.getFolderById(existingId);
+    } catch (e) {
+      // フォルダが削除されていた場合は作り直す
+    }
+  }
+  const folder = DriveApp.createFolder('立替精算_領収書画像');
+  props.setProperty(CONFIG.DRIVE_FOLDER_PROP_KEY, folder.getId());
+  return folder;
+}
+
+// ============================================================
+// 初回セットアップ：シート構成・書式・数式を自動生成
+// 新しい案件に転用するときは、CONFIG.SPREADSHEET_ID を変更してから
+// この関数を1回実行するだけでOK
+// ============================================================
+function setupSpreadsheet() {
+  const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+
+  // ---- 申請ログ ----
+  let logSheet = ss.getSheetByName(CONFIG.SHEET_LOG);
+  if (!logSheet) logSheet = ss.insertSheet(CONFIG.SHEET_LOG);
+  logSheet.clear();
+  logSheet.getRange(1, 1, 1, 9).setValues([[
+    'タイムスタンプ', '申請者名', '車両番号', '勤務日', '用途', '区間', '金額', '領収書画像URL', 'レシート受領チェック（メモ用）',
+  ]]);
+  logSheet.getRange(1, 1, 1, 9).setFontWeight('bold');
+  logSheet.getRange(2, 9, CONFIG.CHECKBOX_PRESET_ROWS, 1).insertCheckboxes();
+  logSheet.setFrozenRows(1);
+
+  // ---- 支払いログ ----
+  let paymentSheet = ss.getSheetByName(CONFIG.SHEET_PAYMENT);
+  if (!paymentSheet) paymentSheet = ss.insertSheet(CONFIG.SHEET_PAYMENT);
+  paymentSheet.clear();
+  paymentSheet.getRange(1, 1, 1, 4).setValues([[
+    '支払日', '支払対象者', '支払金額', '備考',
+  ]]);
+  paymentSheet.getRange(1, 1, 1, 4).setFontWeight('bold');
+  paymentSheet.setFrozenRows(1);
+
+  // 支払対象者は申請ログの申請者名から選択（入力ミス防止・完全一致必須ではない＝警告のみ）
+  const nameListRange = logSheet.getRange('B2:B' + CONFIG.CHECKBOX_PRESET_ROWS);
+  const rule = SpreadsheetApp.newDataValidation()
+    .requireValueInRange(nameListRange, true)
+    .setAllowInvalid(true)
+    .build();
+  paymentSheet.getRange(2, 2, CONFIG.CHECKBOX_PRESET_ROWS, 1).setDataValidation(rule);
+
+  // ---- 人別サマリー（自動集計・新規申請者も自動で追加される）----
+  let summarySheet = ss.getSheetByName(CONFIG.SHEET_SUMMARY);
+  if (!summarySheet) summarySheet = ss.insertSheet(CONFIG.SHEET_SUMMARY);
+  summarySheet.clear();
+  summarySheet.getRange(1, 1, 1, 4).setValues([[
+    '申請者名', '累計申請額', '支払済み累計', '未精算残高',
+  ]]);
+  summarySheet.getRange(1, 1, 1, 4).setFontWeight('bold');
+  summarySheet.setFrozenRows(1);
+
+  summarySheet.getRange('A2').setFormula(
+    '=SORT(UNIQUE(FILTER(' + CONFIG.SHEET_LOG + '!B2:B,' + CONFIG.SHEET_LOG + '!B2:B<>"")))'
+  );
+  summarySheet.getRange('B2').setFormula(
+    '=IFERROR(ARRAYFORMULA(IF(A2:A="","",SUMIF(' + CONFIG.SHEET_LOG + '!B2:B,A2:A,' + CONFIG.SHEET_LOG + '!G2:G))),"")'
+  );
+  summarySheet.getRange('C2').setFormula(
+    '=IFERROR(ARRAYFORMULA(IF(A2:A="","",SUMIF(' + CONFIG.SHEET_PAYMENT + '!B2:B,A2:A,' + CONFIG.SHEET_PAYMENT + '!C2:C))),"")'
+  );
+  summarySheet.getRange('D2').setFormula(
+    '=ARRAYFORMULA(IF(A2:A="","",B2:B-C2:C))'
+  );
+
+  SpreadsheetApp.flush();
+  Logger.log('✅ セットアップ完了：申請ログ／支払いログ／人別サマリー を作成しました。');
+}
