@@ -104,6 +104,16 @@ transition: border-color .15s; outline: none;
 }
 input[type="date"]:focus { border-color: var(--amber); }
 input.has-error { border-color: var(--ng) !important; }
+.field select.vehicle-select {
+width: 100%; padding: 13px 11px;
+border: 1.5px solid var(--line);
+border-radius: 10px; font-size: 16px; font-family: inherit;
+color: var(--ink); background: var(--surface);
+appearance: none; -webkit-appearance: none;
+transition: border-color .15s; outline: none;
+}
+.field select.vehicle-select:focus { border-color: var(--amber); }
+.field select.vehicle-select.has-error { border-color: var(--ng) !important; }
 
 .row-header {
 display: grid;
@@ -300,6 +310,12 @@ let cardCount = 0;
 const purposes = ['駐車場代','ガソリン代','ETC代','備品代','ホテル代','新幹線代','電車代','その他'];
 const opts = purposes.map(p => `<option value="${p}">${p}</option>`).join('');
 
+const vehicles = [
+'ハイエース①','ハイエース②','ハイエース③','ハイエース④','ハイエース⑥','ハイエース⑦','ハイエース⑧','ハイエース⑨','ハイエース⑩',
+'プロボックス②','プロボックス③','グラキャン①','グラキャン②',
+];
+const vehicleOpts = vehicles.map(v => `<option value="${v}">${v}</option>`).join('');
+
 function addCard() {
 cardCount++;
 const n = cardCount;
@@ -315,6 +331,15 @@ ${n > 1 ? `<button class="remove-card-btn" type="button" onclick="removeCard(${n
 <div class="upload-label" id="uploadLabel_${n}">📎 領収書画像を選択する</div>
 <img class="preview-img" id="preview_${n}">
 <input type="hidden" id="fileData_${n}">
+</div>
+
+<div class="field">
+<label>ハイエース番号<span class="req">*</span></label>
+<select class="vehicle-select" id="vehicle_${n}">
+<option value="" disabled selected>選択</option>
+${vehicleOpts}
+</select>
+<div class="field-error" id="errVehicle_${n}">車両番号を選択してください</div>
 </div>
 
 <div class="field">
@@ -459,6 +484,16 @@ const items = [];
 cards.forEach(card => {
 const id = card.id.replace('card_', '');
 
+const vehicleEl = document.getElementById('vehicle_' + id);
+if (!vehicleEl.value) {
+vehicleEl.classList.add('has-error');
+document.getElementById('errVehicle_' + id).classList.add('visible');
+ok = false;
+} else {
+vehicleEl.classList.remove('has-error');
+document.getElementById('errVehicle_' + id).classList.remove('visible');
+}
+
 const dateEl = document.getElementById('date_' + id);
 if (!dateEl.value) {
 dateEl.classList.add('has-error');
@@ -486,6 +521,7 @@ if (pVal && aVal && Number(aVal) > 0) {
 hasValidRow = true;
 const routeEl = document.getElementById('route_' + rowId);
 items.push({
+vehicle:  vehicleEl.value,
 date:     dateEl.value,
 purpose:  pVal,
 amount:   aVal,
