@@ -109,6 +109,26 @@ transition: border-color .15s; outline: none;
 }
 input[type="date"]:focus { border-color: var(--amber); }
 input.has-error { border-color: var(--ng) !important; }
+.field select {
+width: 100%; padding: 13px 11px;
+border: 1.5px solid var(--line);
+border-radius: 10px; font-size: 16px; font-family: inherit;
+color: var(--ink); background: var(--surface);
+appearance: none; -webkit-appearance: none;
+transition: border-color .15s; outline: none;
+}
+.field select:focus { border-color: var(--amber); }
+.field select.has-error { border-color: var(--ng) !important; }
+select.date-select {
+width: 100%; padding: 13px 11px;
+border: 1.5px solid var(--line);
+border-radius: 10px; font-size: 16px; font-family: inherit;
+color: var(--ink); background: var(--surface);
+appearance: none; -webkit-appearance: none;
+transition: border-color .15s; outline: none;
+}
+select.date-select:focus { border-color: var(--amber); }
+select.date-select.has-error { border-color: var(--ng) !important; }
 
 .sub-wrap { display: none; margin-top: 8px; }
 .sub-wrap.visible { display: block; }
@@ -336,6 +356,26 @@ const vehicles = [
 ];
 const vehicleOpts = vehicles.map(v => `<option value="${v}">${v}</option>`).join('');
 
+// 勤務日プルダウン：2026/9/14(月)〜2026/10/4(日)。表示は年を出さず「月/日(曜)」形式
+const workDates = (function () {
+const dayNames = ['日','月','火','水','木','金','土'];
+const start = new Date(2026, 8, 14); // 9月14日
+const end = new Date(2026, 9, 4);   // 10月4日
+const list = [];
+let d = new Date(start);
+while (d <= end) {
+const y = d.getFullYear();
+const m = d.getMonth() + 1;
+const day = d.getDate();
+const iso = y + '-' + String(m).padStart(2, '0') + '-' + String(day).padStart(2, '0');
+const label = m + '/' + day + '(' + dayNames[d.getDay()] + ')';
+list.push({ value: iso, label: label });
+d.setDate(d.getDate() + 1);
+}
+return list;
+})();
+const dateOpts = workDates.map(d => `<option value="${d.value}">${d.label}</option>`).join('');
+
 function addCard() {
 cardCount++;
 const n = cardCount;
@@ -357,7 +397,15 @@ ${n > 1 ? `<button class="remove-card-btn" type="button" onclick="removeCard(${n
 
 <div class="field">
 <label>勤務日<span class="req">*</span></label>
-<input type="date" id="date_${n}">
+<select class="date-select" id="date_${n}" onchange="onDateChange(${n})">
+<option value="" disabled selected>選択</option>
+${dateOpts}
+<option value="other">その他（日付を指定）</option>
+</select>
+<div class="sub-wrap" id="dateOtherWrap_${n}">
+<div class="sub-label">日付を選択</div>
+<input type="date" id="dateOther_${n}">
+</div>
 <div class="field-error" id="errDate_${n}">勤務日を選択してください</div>
 </div>
 
@@ -405,6 +453,18 @@ ${vehicleOpts}
 `;
 container.insertAdjacentHTML('beforeend', html);
 updateFirstRowBtn(cardId);
+}
+
+function onDateChange(n) {
+const val = document.getElementById('date_' + n).value;
+const wrap = document.getElementById('dateOtherWrap_' + n);
+if (val === 'other') {
+wrap.classList.add('visible');
+} else {
+wrap.classList.remove('visible');
+const otherEl = document.getElementById('dateOther_' + n);
+if (otherEl) otherEl.value = '';
+}
 }
 
 function onPurposeChange(rowId) {
@@ -534,7 +594,12 @@ cards.forEach(card => {
 const id = card.id.replace('card_', '');
 
 const dateEl = document.getElementById('date_' + id);
-if (!dateEl.value) {
+const dateOtherEl = document.getElementById('dateOther_' + id);
+let dateVal = dateEl.value;
+if (dateVal === 'other') {
+dateVal = dateOtherEl ? dateOtherEl.value : '';
+}
+if (!dateVal) {
 dateEl.classList.add('has-error');
 document.getElementById('errDate_' + id).classList.add('visible');
 ok = false;
@@ -572,7 +637,7 @@ vehicleEl.classList.remove('has-error');
 }
 items.push({
 vehicle:  vehicleVal,
-date:     dateEl.value,
+date:     dateVal,
 purpose:  pVal,
 amount:   aVal,
 route:    routeEl ? routeEl.value.trim() : '',
