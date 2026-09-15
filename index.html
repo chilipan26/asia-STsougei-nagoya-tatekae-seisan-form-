@@ -109,16 +109,21 @@ transition: border-color .15s; outline: none;
 }
 input[type="date"]:focus { border-color: var(--amber); }
 input.has-error { border-color: var(--ng) !important; }
-.field select.vehicle-select {
-width: 100%; padding: 13px 11px;
+
+.sub-wrap { display: none; margin-top: 8px; }
+.sub-wrap.visible { display: block; }
+.sub-label { font-size: 12px; font-weight: 600; color: var(--ink-sub); margin-bottom: 4px; }
+select.vehicle-select {
+width: 100%; padding: 10px 11px;
 border: 1.5px solid var(--line);
-border-radius: 10px; font-size: 16px; font-family: inherit;
+border-radius: 8px; font-size: 13px; font-family: inherit;
 color: var(--ink); background: var(--surface);
 appearance: none; -webkit-appearance: none;
-transition: border-color .15s; outline: none;
+outline: none; transition: border-color .15s;
+height: 40px;
 }
-.field select.vehicle-select:focus { border-color: var(--amber); }
-.field select.vehicle-select.has-error { border-color: var(--ng) !important; }
+select.vehicle-select:focus { border-color: var(--amber); }
+select.vehicle-select.has-error { border-color: var(--ng) !important; }
 
 .row-header {
 display: grid;
@@ -160,13 +165,6 @@ input.row-amount::-webkit-inner-spin-button { -webkit-appearance: none; margin: 
 input.row-amount:focus { border-color: var(--amber); }
 input.row-amount.has-error { border-color: var(--ng) !important; }
 
-.route-wrap {
-display: none;
-grid-column: 2 / 3;
-margin-top: 6px;
-}
-.route-wrap.visible { display: block; }
-.route-label { font-size: 12px; font-weight: 600; color: var(--ink-sub); margin-bottom: 4px; }
 input.route-input {
 width: 100%; padding: 10px 11px;
 border: 1.5px solid var(--line);
@@ -319,8 +317,18 @@ const GAS_URL = 'https://script.google.com/macros/s/AKfycbyVQHHO37skfECGiT7pREmh
 
 let cardCount = 0;
 
-const purposes = ['駐車場代','ガソリン代','ETC代','備品代','ホテル代','新幹線代','電車代','その他'];
+const purposes = [
+'駐車場代（運営車両）','ガソリン代（運営車両）',
+'備品代','ホテル代','新幹線代','飛行機代','電車代',
+'ETC（自家用車）','駐車場代（自家用車）','ガソリン代（自家用車）',
+'その他',
+];
 const opts = purposes.map(p => `<option value="${p}">${p}</option>`).join('');
+
+// ハイエース番号の入力欄を出す用途（運営車両を使った場合のみ）
+const vehiclePurposes = ['駐車場代（運営車両）', 'ガソリン代（運営車両）'];
+// 区間の入力欄を出す用途
+const routePurposes = ['新幹線代', '飛行機代', '電車代'];
 
 const vehicles = [
 'ハイエース①','ハイエース②','ハイエース③','ハイエース④','ハイエース⑥','ハイエース⑦','ハイエース⑧','ハイエース⑨','ハイエース⑩',
@@ -345,15 +353,6 @@ ${n > 1 ? `<button class="remove-card-btn" type="button" onclick="removeCard(${n
 <div class="preview-pdf" id="previewPdf_${n}" style="display:none;font-size:13px;color:var(--amber-txt);margin-top:8px;">📄 PDFを添付しました</div>
 <input type="hidden" id="fileData_${n}">
 <input type="hidden" id="fileMime_${n}">
-</div>
-
-<div class="field">
-<label>ハイエース番号<span class="req">*</span></label>
-<select class="vehicle-select" id="vehicle_${n}">
-<option value="" disabled selected>選択</option>
-${vehicleOpts}
-</select>
-<div class="field-error" id="errVehicle_${n}">車両番号を選択してください</div>
 </div>
 
 <div class="field">
@@ -382,23 +381,26 @@ function addRow(cardId) {
 const container = document.getElementById('rows_' + cardId);
 const rowId = Date.now() + '_' + Math.random().toString(36).slice(2);
 const html = `
-<div class="row-pair" id="row_${rowId}" style="display:grid;grid-template-columns:1fr 1fr 28px;gap:8px;align-items:start;">
-<div style="display:flex;flex-direction:column;gap:6px;">
+<div class="row-block" id="rowBlock_${rowId}">
+<div class="row-pair" id="row_${rowId}">
 <select class="row-select" id="purpose_${rowId}" onchange="onPurposeChange('${rowId}')">
 <option value="" disabled selected>選択</option>
 ${opts}
 </select>
-<div class="route-wrap" id="routeLabelWrap_${rowId}">
-<div class="route-label" style="padding:10px 8px;font-size:12px;text-align:right;">区間を入力ください</div>
-</div>
-</div>
-<div style="display:flex;flex-direction:column;gap:6px;">
 <input type="text" inputmode="numeric" class="row-amount" id="amount_${rowId}" placeholder="0">
-<div class="route-wrap" id="routeWrap_${rowId}">
+<button class="remove-row-btn" type="button" onclick="removeRow('${rowId}', ${cardId})">✕</button>
+</div>
+<div class="sub-wrap" id="vehicleWrap_${rowId}">
+<div class="sub-label">ハイエース番号<span class="req">*</span></div>
+<select class="vehicle-select" id="vehicle_${rowId}">
+<option value="" disabled selected>選択</option>
+${vehicleOpts}
+</select>
+</div>
+<div class="sub-wrap" id="routeWrap_${rowId}">
+<div class="sub-label">区間</div>
 <input type="text" class="route-input" id="route_${rowId}" placeholder="例）新大阪駅〜東京駅">
 </div>
-</div>
-<button class="remove-row-btn" type="button" onclick="removeRow('${rowId}', ${cardId})" style="margin-top:8px;">✕</button>
 </div>
 `;
 container.insertAdjacentHTML('beforeend', html);
@@ -407,21 +409,28 @@ updateFirstRowBtn(cardId);
 
 function onPurposeChange(rowId) {
 const val = document.getElementById('purpose_' + rowId).value;
-const labelWrap = document.getElementById('routeLabelWrap_' + rowId);
-const inputWrap = document.getElementById('routeWrap_' + rowId);
-if (val === '新幹線代' || val === '電車代') {
-if (labelWrap) labelWrap.classList.add('visible');
-if (inputWrap) inputWrap.classList.add('visible');
+
+const vehicleWrap = document.getElementById('vehicleWrap_' + rowId);
+if (vehiclePurposes.indexOf(val) !== -1) {
+vehicleWrap.classList.add('visible');
 } else {
-if (labelWrap) labelWrap.classList.remove('visible');
-if (inputWrap) inputWrap.classList.remove('visible');
+vehicleWrap.classList.remove('visible');
+const vehicleEl = document.getElementById('vehicle_' + rowId);
+if (vehicleEl) { vehicleEl.value = ''; vehicleEl.classList.remove('has-error'); }
+}
+
+const routeWrap = document.getElementById('routeWrap_' + rowId);
+if (routePurposes.indexOf(val) !== -1) {
+routeWrap.classList.add('visible');
+} else {
+routeWrap.classList.remove('visible');
 const routeEl = document.getElementById('route_' + rowId);
 if (routeEl) routeEl.value = '';
 }
 }
 
 function removeRow(rowId, cardId) {
-const el = document.getElementById('row_' + rowId);
+const el = document.getElementById('rowBlock_' + rowId);
 if (el) el.remove();
 updateFirstRowBtn(cardId);
 }
@@ -524,16 +533,6 @@ const items = [];
 cards.forEach(card => {
 const id = card.id.replace('card_', '');
 
-const vehicleEl = document.getElementById('vehicle_' + id);
-if (!vehicleEl.value) {
-vehicleEl.classList.add('has-error');
-document.getElementById('errVehicle_' + id).classList.add('visible');
-ok = false;
-} else {
-vehicleEl.classList.remove('has-error');
-document.getElementById('errVehicle_' + id).classList.remove('visible');
-}
-
 const dateEl = document.getElementById('date_' + id);
 if (!dateEl.value) {
 dateEl.classList.add('has-error');
@@ -560,8 +559,19 @@ if (!pVal && !aVal) return;
 if (pVal && aVal && Number(aVal) > 0) {
 hasValidRow = true;
 const routeEl = document.getElementById('route_' + rowId);
+const vehicleEl = document.getElementById('vehicle_' + rowId);
+let vehicleVal = '';
+if (vehiclePurposes.indexOf(pVal) !== -1) {
+vehicleVal = vehicleEl ? vehicleEl.value : '';
+if (!vehicleVal) {
+if (vehicleEl) vehicleEl.classList.add('has-error');
+ok = false;
+} else if (vehicleEl) {
+vehicleEl.classList.remove('has-error');
+}
+}
 items.push({
-vehicle:  vehicleEl.value,
+vehicle:  vehicleVal,
 date:     dateEl.value,
 purpose:  pVal,
 amount:   aVal,
